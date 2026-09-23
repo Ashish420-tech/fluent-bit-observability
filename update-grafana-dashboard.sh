@@ -1,0 +1,401 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DASHBOARD="./grafana/dashboards/fluent-bit-dashboard.json"
+
+echo "===== Backing up existing dashboard ====="
+
+cp "$DASHBOARD" \
+   "${DASHBOARD}.backup.$(date +%Y%m%d-%H%M%S)"
+
+
+echo "===== Writing updated dashboard ====="
+
+cat > "$DASHBOARD" <<'JSON'
+{
+  "uid": "fluent-bit-docker-logs",
+  "title": "Fluent Bit Docker Log Dashboard",
+
+  "tags": [
+    "fluent-bit",
+    "docker",
+    "loki"
+  ],
+
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 2,
+  "refresh": "5s",
+
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+
+  "annotations": {
+    "list": []
+  },
+
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+
+        "query": "label_values({job=\"fluentbit\"}, service)",
+        "definition": "label_values({job=\"fluentbit\"}, service)",
+
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 1,
+
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+
+      {
+        "name": "level",
+        "label": "Level",
+        "type": "query",
+
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+
+        "query": "label_values({job=\"fluentbit\"}, level)",
+        "definition": "label_values({job=\"fluentbit\"}, level)",
+
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": false,
+        "refresh": 1,
+
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Logs",
+
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"fluentbit\",service=~\"$service\"}[$__range]))",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "INFO",
+
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"fluentbit\",service=~\"$service\",level=\"INFO\"}[$__range]))",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "WARNING",
+
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"fluentbit\",service=~\"$service\",level=\"WARNING\"}[$__range]))",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "ERROR",
+
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"fluentbit\",service=~\"$service\",level=\"ERROR\"}[$__range]))",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+
+
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "NETWORK ERROR",
+
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({job=\"fluentbit\",service=~\"$service\",level=\"NETWORK_ERROR\"}[$__range]))",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+
+
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Service Logs",
+
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"fluentbit\",service=~\"$service\",level=~\"$level\"} | json",
+          "queryType": "range",
+          "editorMode": "code"
+        }
+      ],
+
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending"
+      },
+
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    }
+
+  ]
+}
+JSON
+
+
+echo "===== Validating JSON ====="
+
+jq empty "$DASHBOARD"
+
+echo "JSON VALID"
+
+
+echo "===== Restarting Grafana ====="
+
+docker compose restart grafana
+
+
+echo "===== Waiting for Grafana ====="
+
+sleep 8
+
+
+echo "===== Grafana Status ====="
+
+docker compose ps grafana
+
+
+echo
+echo "Dashboard updated successfully."
+echo "Open:"
+echo "http://localhost:3200"

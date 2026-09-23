@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# Exports / archives
+exports/
+*.zip
+*.tar.gz
+
+# Backups
+*.backup
+*.backup.*
+*.bak
+
+# Runtime data
+grafana-data/
+loki-data/
+
+# Editor / temp files
+.vscode/
+.idea/
+*.tmp
+*~
+.DS_Store

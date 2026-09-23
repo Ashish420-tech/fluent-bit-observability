@@ -1,0 +1,187 @@
+services:
+
+  fluent-bit:
+    image: cr.fluentbit.io/fluent/fluent-bit:5.1.2
+    container_name: fluent-bit
+    restart: unless-stopped
+
+    ports:
+      - "2020:2020"
+      - "24224:24224"
+
+    volumes:
+      - ./config/fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml:ro
+      - ./logs:/logs
+
+    command:
+      - /fluent-bit/bin/fluent-bit
+      - -c
+      - /fluent-bit/etc/fluent-bit.yaml
+
+
+  auth:
+    image: alpine:latest
+    container_name: auth-service
+    restart: unless-stopped
+
+    depends_on:
+      - fluent-bit
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        i=0
+        while true; do
+          i=$$((i+1))
+
+          echo "{\"service\":\"auth\",\"level\":\"INFO\",\"message\":\"login request successful\"}"
+
+          if [ $$((i % 5)) -eq 0 ]; then
+            echo "{\"service\":\"auth\",\"level\":\"ERROR\",\"message\":\"invalid authentication token\"}" >&2
+          fi
+
+          sleep 3
+        done
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        fluentd-async: "true"
+        tag: "docker.auth"
+
+
+  catalog:
+    image: alpine:latest
+    container_name: catalog-service
+    restart: unless-stopped
+
+    depends_on:
+      - fluent-bit
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        i=0
+        while true; do
+          i=$$((i+1))
+
+          echo "{\"service\":\"catalog\",\"level\":\"INFO\",\"message\":\"product request processed\"}"
+
+          if [ $$((i % 4)) -eq 0 ]; then
+            echo "{\"service\":\"catalog\",\"level\":\"WARNING\",\"message\":\"slow database query detected\"}" >&2
+          fi
+
+          sleep 4
+        done
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        fluentd-async: "true"
+        tag: "docker.catalog"
+
+
+  parenting:
+    image: alpine:latest
+    container_name: parenting-service
+    restart: unless-stopped
+
+    depends_on:
+      - fluent-bit
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        i=0
+        while true; do
+          i=$$((i+1))
+
+          echo "{\"service\":\"parenting\",\"level\":\"INFO\",\"message\":\"parenting request processed\"}"
+
+          if [ $$((i % 6)) -eq 0 ]; then
+            echo "{\"service\":\"parenting\",\"level\":\"NETWORK_ERROR\",\"message\":\"upstream connection timeout\"}" >&2
+          fi
+
+          sleep 5
+        done
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        fluentd-async: "true"
+        tag: "docker.parenting"
+
+
+  vendor:
+    image: alpine:latest
+    container_name: vendor-service
+    restart: unless-stopped
+
+    depends_on:
+      - fluent-bit
+
+    command:
+      - /bin/sh
+      - -c
+      - |
+        i=0
+        while true; do
+          i=$$((i+1))
+
+          echo "{\"service\":\"vendor\",\"level\":\"INFO\",\"message\":\"vendor request processed\"}"
+
+          if [ $$((i % 7)) -eq 0 ]; then
+            echo "{\"service\":\"vendor\",\"level\":\"ERROR\",\"message\":\"vendor operation failed\"}" >&2
+          fi
+
+          sleep 4
+        done
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: "127.0.0.1:24224"
+        fluentd-async: "true"
+        tag: "docker.vendor"
+
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3200:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+         
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: "${SMTP_HOST}"
+      GF_SMTP_USER: "${SMTP_USER}"
+      GF_SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      GF_SMTP_FROM_ADDRESS: "${SMTP_FROM}"
+      GF_SMTP_FROM_NAME: "Fluent Bit Monitoring"
+      GF_SMTP_STARTTLS_POLICY: "MandatoryStartTLS"
+      
+      ALERT_EMAIL:  "${ALERT_EMAIL}"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - loki

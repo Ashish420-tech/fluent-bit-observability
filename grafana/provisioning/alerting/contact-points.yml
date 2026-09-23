@@ -1,0 +1,11 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: DevOps Email
+    receivers:
+      - uid: devops-email
+        type: email
+        settings:
+          addresses: $ALERT_EMAIL
+        disableResolveMessage: false
